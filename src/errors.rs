@@ -25,9 +25,16 @@ pub enum AppError {
     #[error("Log error")]
     LogError(#[from] log::SetLoggerError),
 
+    /// Metadata download failed.
+    #[error("Failed to download ENA metadata")]
+    MetadataDownloadError(String),
+
     /// Fastq download failed.
     #[error("Fastq download failed")]
-    FastqMd5MismatchError(FailedFastq),
+    FastqDownloadError(FailedFastq),
+
+    #[error("Fastq download timeout")]
+    TimeoutError(String),
 }
 
 #[derive(Debug, Clone)]
@@ -37,4 +44,15 @@ pub struct FailedFastq {
     pub platform: Platform,
     pub ftp: String,
     pub reason: String,
+}
+
+impl AppError {
+    /// Extract a human-readable reason from the error.
+    pub fn reason(&self) -> String {
+        match self {
+            AppError::FastqDownloadError(f) => f.reason.clone(),
+            AppError::TimeoutError(s) => s.clone(),
+            _ => self.to_string(),
+        }
+    }
 }

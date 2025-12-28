@@ -55,7 +55,15 @@ impl EnaFileReport {
         match (self.instrument_platform.end_kind(), vec.len()) {
             (PairKind::SingleEnd, 1) => Ok(vec),
             (PairKind::PairedEnd, 2) => Ok(vec),
-            _ => Err(AppError::PlatformMismatchError("".into())),
+            _ => {
+                let msg = format!(
+                    "Platform: {:?}, Expected end kind: {:?}, Provided data: {:?}",
+                    self.instrument_platform,
+                    self.instrument_platform.end_kind(),
+                    vec
+                );
+                Err(AppError::PlatformMismatchError(msg))
+            }
         }
     }
 
@@ -89,7 +97,7 @@ impl EnaFileReport {
     }
 
     /// Creates a complete download specification with FTP URLs, checksums, and local paths.
-    pub fn download_spec(&self, outdir: &Path) -> Result<DownloadSpec, AppError> {
+    pub fn get_download_spec(&self, outdir: &Path) -> Result<DownloadSpec, AppError> {
         let fastq_ftps = self.get_fastq_ftp()?;
         let fastq_md5s = self.get_fastq_md5()?;
         let fastq_locals = self.get_fastq_local(outdir);
