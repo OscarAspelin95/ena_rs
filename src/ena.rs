@@ -1,59 +1,9 @@
 use crate::errors::AppError;
-use crate::schema::{DownloadSpec, EnaFileReport};
+use crate::schemas::{download::DownloadSpec, report::EnaFileReport};
 use log::{error, info};
-use std::fmt::Display;
 use std::fs::File;
 use std::io::{BufWriter, Write};
 use std::path::PathBuf;
-
-pub enum EnaUrlType {
-    Https,
-}
-
-impl Display for EnaUrlType {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            EnaUrlType::Https => write!(f, "https://"),
-        }
-    }
-}
-
-pub enum EnaFormat {
-    Json,
-}
-
-impl Display for EnaFormat {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            EnaFormat::Json => write!(f, "json"),
-        }
-    }
-}
-pub struct EnaUrl {
-    base: String,
-    fields: String,
-    url_type: EnaUrlType,
-    format: EnaFormat,
-}
-
-impl EnaUrl {
-    pub fn new() -> Self {
-        Self{
-			base: "www.ebi.ac.uk/ena/portal/api/filereport".to_string(),
-			fields: "study_accession,sample_accession,experiment_accession,run_accession,tax_id,scientific_name,instrument_platform,fastq_bytes,fastq_ftp,fastq_md5".to_string(),
-			url_type: EnaUrlType::Https,
-			format: EnaFormat::Json,
-		}
-    }
-
-    pub fn build(&self, accession: &str) -> String {
-        let url = format!(
-            "{}{}?accession={}&result=read_run&fields={}&format={}",
-            self.url_type, self.base, accession, self.fields, self.format
-        );
-        url
-    }
-}
 
 pub async fn fetch_data(url: &str) -> Result<Vec<EnaFileReport>, AppError> {
     let response = reqwest::get(url).await?;
@@ -64,6 +14,12 @@ pub async fn fetch_data(url: &str) -> Result<Vec<EnaFileReport>, AppError> {
     Ok(data)
 }
 
+pub fn valid_md5<T: AsRef<[u8]>>(bytes: T, expected_md5: &str) -> bool {
+    let digest = md5::compute(&bytes);
+    let actual_md5_sum = format!("{:x}", digest);
+
+    actual_md5_sum == expected_md5
+}
 /// Make classmethod later on.
 pub async fn parse_data(data: &[EnaFileReport], outdir: PathBuf) -> Result<(), AppError> {
     for ena_report in data {
@@ -109,10 +65,7 @@ pub async fn parse_data(data: &[EnaFileReport], outdir: PathBuf) -> Result<(), A
                 }
             }
 
-            let digest = md5::compute(&bytes);
-            let actual_md5_sum = format!("{:x}", digest);
-
-            match actual_md5_sum == fq_md5 {
+            match valid_md5(&bytes, &fq_md5) {
                 true => {
                     info!("Md5 sum matches")
                 }

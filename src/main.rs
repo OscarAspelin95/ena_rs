@@ -6,16 +6,9 @@ use tokio::{self, fs::create_dir};
 mod args;
 use args::App;
 
-mod errors;
-use errors::AppError;
-
-mod schema;
-
-mod ena;
-use ena::{EnaUrl, parse_data};
-
-mod platform;
-use crate::ena::fetch_data;
+use ena_rs::AppError;
+use ena_rs::schemas::url::EnaUrl;
+use ena_rs::ena::{fetch_data, parse_data};
 
 #[tokio::main]
 async fn main() -> Result<(), AppError> {

@@ -5,9 +5,6 @@ pub enum AppError {
     #[error("Failed to serialize")]
     SerializationError(#[from] serde_json::Error),
 
-    #[error("Invalid schema: {0}")]
-    SchemaError(String),
-
     #[error("Platform mismatch: {0}")]
     PlatformMismatchError(String),
 
