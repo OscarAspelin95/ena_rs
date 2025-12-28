@@ -2,7 +2,9 @@ use crate::schemas::report::EnaFileReport;
 use std::fmt::Display;
 use struct_field_names_as_array::FieldNamesAsSlice;
 
+/// URL protocol type for ENA API.
 pub enum EnaUrlType {
+    /// HTTPS protocol
     Https,
 }
 
@@ -14,7 +16,9 @@ impl Display for EnaUrlType {
     }
 }
 
+/// Response format for ENA API.
 pub enum EnaFormat {
+    /// JSON format
     Json,
 }
 
@@ -26,14 +30,26 @@ impl Display for EnaFormat {
     }
 }
 
+/// Builder for constructing ENA API query URLs.
 pub struct EnaUrl {
+    /// Base API endpoint
     base: String,
+    /// Comma-separated field names to retrieve
     fields: String,
+    /// Protocol type
     url_type: EnaUrlType,
+    /// Response format
     format: EnaFormat,
 }
 
+impl Default for EnaUrl {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl EnaUrl {
+    /// Creates a new ENA URL builder with default settings.
     pub fn new() -> Self {
         Self {
             base: "www.ebi.ac.uk/ena/portal/api/filereport".to_string(),
@@ -43,6 +59,13 @@ impl EnaUrl {
         }
     }
 
+    /// Builds the complete URL for querying ENA metadata.
+    ///
+    /// # Arguments
+    /// * `accession` - ENA accession number (run, sample, or study)
+    ///
+    /// # Returns
+    /// Complete URL string for the API request
     pub fn build(&self, accession: &str) -> String {
         let url = format!(
             "{}{}?accession={}&result=read_run&fields={}&format={}",

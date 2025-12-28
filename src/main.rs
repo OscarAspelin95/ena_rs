@@ -7,8 +7,8 @@ mod args;
 use args::App;
 
 use ena_rs::AppError;
+use ena_rs::ena::{fetch_fastqs, fetch_metadata};
 use ena_rs::schemas::url::EnaUrl;
-use ena_rs::ena::{fetch_data, parse_data};
 
 #[tokio::main]
 async fn main() -> Result<(), AppError> {
@@ -20,9 +20,15 @@ async fn main() -> Result<(), AppError> {
     create_dir(&args.outdir).await?;
 
     info!("Fetching data from {}", ena_url);
-    let data = fetch_data(&ena_url).await?;
+    let data = fetch_metadata(&ena_url).await?;
 
-    parse_data(&data, args.outdir).await?;
+    match fetch_fastqs(&data, args.outdir).await {
+        Ok(failed_samples) => match failed_samples.len() {
+            0 => info!("All samples downloaded successfully"),
+            _ => info!("{} samples failed to download", failed_samples.len()),
+        },
+        Err(err) => return Err(err),
+    }
 
     Ok(())
 }

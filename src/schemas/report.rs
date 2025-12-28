@@ -7,20 +7,36 @@ use serde::{Deserialize, Serialize};
 use std::path::Path;
 use struct_field_names_as_array::FieldNamesAsSlice;
 
+/// ENA file report containing metadata and download information for a sequencing run.
+///
+/// This structure is deserialized from ENA API responses and contains all necessary
+/// information to download and validate FASTQ files.
 #[derive(Debug, Serialize, Deserialize, FieldNamesAsSlice)]
 pub struct EnaFileReport {
+    /// Study accession (e.g., PRJNA123456)
     pub study_accession: String,
+    /// Sample accession (e.g., SAMN01234567)
     pub sample_accession: String,
+    /// Experiment accession (e.g., SRX123456)
     pub experiment_accession: String,
+    /// Run accession (e.g., SRR123456)
     pub run_accession: String,
+    /// NCBI taxonomy ID
     pub tax_id: String,
+    /// Species scientific name
     pub scientific_name: String,
+    /// Sequencing platform
     pub instrument_platform: Platform,
+    /// Semicolon-separated FTP URLs for FASTQ files
     pub fastq_ftp: String,
+    /// Semicolon-separated MD5 checksums
     pub fastq_md5: String,
 }
 
 impl EnaFileReport {
+    /// Constructs a local filename for a FASTQ file.
+    ///
+    /// Format: `{sample}_{run}_{platform}_{pair}.fastq.gz`
     pub fn get_single_end(&self, outdir: &Path, pair: &Pairs) -> String {
         format!(
             "{}/{}_{}_{}_{}.fastq.gz",
@@ -32,6 +48,9 @@ impl EnaFileReport {
         )
     }
 
+    /// Validates that the number of files matches the platform's expected read type.
+    ///
+    /// Single-end platforms expect 1 file, paired-end platforms expect 2 files.
     pub fn validate(&self, vec: Vec<String>) -> Result<Vec<String>, AppError> {
         match (self.instrument_platform.end_kind(), vec.len()) {
             (PairKind::SingleEnd, 1) => Ok(vec),
@@ -40,16 +59,21 @@ impl EnaFileReport {
         }
     }
 
+    /// Parses and validates FTP URLs from the semicolon-separated field.
     pub fn get_fastq_ftp(&self) -> Result<Vec<String>, AppError> {
         let fastq_ftps: Vec<String> = self.fastq_ftp.split(";").map(String::from).collect();
         self.validate(fastq_ftps)
     }
 
+    /// Parses and validates MD5 checksums from the semicolon-separated field.
     pub fn get_fastq_md5(&self) -> Result<Vec<String>, AppError> {
         let fastq_md5s: Vec<String> = self.fastq_md5.split(";").map(String::from).collect();
         self.validate(fastq_md5s)
     }
 
+    /// Generates local file paths for FASTQ files based on platform type.
+    ///
+    /// Returns 1 path for single-end, 2 paths for paired-end.
     pub fn get_fastq_local(&self, outdir: &Path) -> Vec<String> {
         match self.instrument_platform.end_kind() {
             PairKind::SingleEnd => {
@@ -64,6 +88,7 @@ impl EnaFileReport {
         }
     }
 
+    /// Creates a complete download specification with FTP URLs, checksums, and local paths.
     pub fn download_spec(&self, outdir: &Path) -> Result<DownloadSpec, AppError> {
         let fastq_ftps = self.get_fastq_ftp()?;
         let fastq_md5s = self.get_fastq_md5()?;
