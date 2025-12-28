@@ -1,3 +1,5 @@
+use indicatif::ProgressBar;
+
 use crate::AppError;
 use crate::ena::valid_md5;
 use crate::errors::FailedFastq;
@@ -11,14 +13,17 @@ pub async fn download_single_file_with_retry(
     fq_md5: &str,
     fq_local: &str,
     ena_report: &EnaFileReport,
+    bar: &ProgressBar,
 ) -> Result<usize, AppError> {
     let max_num_retries: usize = 3;
     let mut num_retries: usize = 0;
 
     loop {
         let timeout_limit = (num_retries * 5) + 5;
+        let seconds_sleep = num_retries * 5;
 
         // Run download with timeout (in seconds).
+        let _ = tokio::time::sleep(Duration::from_secs(seconds_sleep as u64)).await;
         let result_with_timeout = tokio::time::timeout(
             Duration::from_secs(timeout_limit as u64 * 60),
             download_single_file(fq_ftp, fq_md5, fq_local, ena_report),
@@ -35,7 +40,12 @@ pub async fn download_single_file_with_retry(
                 if num_retries >= max_num_retries {
                     return Err(AppError::TimeoutError(err.to_string()));
                 }
+
                 num_retries += 1;
+                bar.println(format!(
+                    "{} timeout exceeded, retrying ({num_retries}/{max_num_retries}).",
+                    &ena_report.run_accession
+                ));
                 continue;
             }
         };
@@ -50,6 +60,10 @@ pub async fn download_single_file_with_retry(
                     return Err(AppError::FastqDownloadError(err));
                 }
                 num_retries += 1;
+                bar.println(format!(
+                    "{} download failed, retrying ({num_retries}/{max_num_retries}).",
+                    &ena_report.run_accession
+                ));
                 continue;
             }
         }

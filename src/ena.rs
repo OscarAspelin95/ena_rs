@@ -75,13 +75,17 @@ pub async fn fetch_fastqs(
             let filename = fq_local.rsplit('/').next().unwrap_or(&fq_local);
             bar.set_message(filename.to_string());
 
-            match download_single_file_with_retry(&fq_ftp, &fq_md5, &fq_local, ena_report).await {
+            let download_result =
+                download_single_file_with_retry(&fq_ftp, &fq_md5, &fq_local, ena_report, &bar)
+                    .await;
+
+            match download_result {
                 Ok(bytes) => total_bytes += bytes,
                 Err(err) => {
                     download_status = DownloadStatus::failure(&err.reason());
                     failed_samples.push(err);
                 }
-            }
+            };
         }
 
         bar.inc(1);
