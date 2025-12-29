@@ -30,3 +30,5 @@ Required arguments:
 - Add filtering options for e.g., platform, fastq byte size, etc.
 - Streaming support for large files.
 - Add dynamic timeout based on fastq byte size.
+
+![play_gif](./assets/ena_rs.gif)
