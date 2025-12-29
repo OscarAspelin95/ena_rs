@@ -3,6 +3,7 @@ use std::path::PathBuf;
 
 /// Command-line arguments for the ENA downloader.
 #[derive(Debug, Parser)]
+#[command(version, about = "CLI tool for downloading ENA fastq files.", long_about = None)]
 pub struct App {
     /// ENA accession number (run, sample, or study accession).
     #[arg(

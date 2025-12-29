@@ -20,7 +20,7 @@ The generated binary is available in `target/release/ena_rs`.
 
 Required arguments:
 <pre>
-<b>--accession</b> A ENA project, sample or run accession.
+<b>--accession</b> An ENA project, sample or run accession.
 <b>--outdir</b> Output directory.
 </pre>
 
