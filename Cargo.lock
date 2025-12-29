@@ -207,6 +207,7 @@ name = "ena_rs"
 version = "0.0.1"
 dependencies = [
  "clap",
+ "console",
  "indicatif",
  "log",
  "md5",

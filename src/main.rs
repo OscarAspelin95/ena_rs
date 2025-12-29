@@ -23,9 +23,9 @@ async fn main() -> Result<(), AppError> {
     let data = fetch_metadata(&ena_url).await?;
 
     match fetch_fastqs(&data, args.outdir).await {
-        Ok(failed_samples) => match failed_samples.len() {
-            0 => info!("All samples downloaded successfully"),
-            _ => info!("{} samples failed to download", failed_samples.len()),
+        Ok(all_succeeded) => match all_succeeded {
+            true => info!("All samples downloaded successfully"),
+            false => info!("Some samples failed to download, check the log file for details"),
         },
         Err(err) => return Err(err),
     }

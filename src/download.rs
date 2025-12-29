@@ -4,6 +4,7 @@ use crate::AppError;
 use crate::ena::valid_md5;
 use crate::errors::FailedFastq;
 use crate::schemas::report::EnaFileReport;
+use console::style;
 use std::fs::File;
 use std::io::{BufWriter, Write};
 use std::time::Duration;
@@ -42,10 +43,11 @@ pub async fn download_single_file_with_retry(
                 }
 
                 num_retries += 1;
-                bar.println(format!(
+                let msg = format!(
                     "{} timeout exceeded, retrying ({num_retries}/{max_num_retries}).",
                     &ena_report.run_accession
-                ));
+                );
+                bar.println(style(msg).yellow().to_string());
                 continue;
             }
         };
@@ -60,10 +62,11 @@ pub async fn download_single_file_with_retry(
                     return Err(AppError::FastqDownloadError(err));
                 }
                 num_retries += 1;
-                bar.println(format!(
+                let msg = format!(
                     "{} download failed, retrying ({num_retries}/{max_num_retries}).",
                     &ena_report.run_accession
-                ));
+                );
+                bar.println(style(msg).yellow().to_string());
                 continue;
             }
         }

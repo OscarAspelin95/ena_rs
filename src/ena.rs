@@ -1,7 +1,10 @@
-use crate::download_utils::{DownloadStatus, progress_bar};
+use crate::download_utils::{format_bytes, progress_bar};
 use crate::errors::AppError;
 use crate::schemas::{download::DownloadSpec, report::EnaFileReport};
-use std::path::PathBuf;
+use console::style;
+use std::fs::File;
+use std::io::{BufWriter, Write};
+use std::path::{Path, PathBuf};
 
 use crate::download::download_single_file_with_retry;
 
@@ -36,6 +39,12 @@ pub fn valid_md5<T: AsRef<[u8]>>(bytes: T, expected_md5: &str) -> bool {
     actual_md5_sum == expected_md5
 }
 
+fn get_writer(outdir: &Path) -> BufWriter<File> {
+    let f = outdir.join("failed_samples.txt");
+    let file = File::create(&f).expect("Failed to create output file for failed samples.");
+    BufWriter::new(file)
+}
+
 /// Downloads FASTQ files based on EnaFileReports.
 ///
 /// Downloads the associated FASTQ files and validates them using MD5 checksums.
@@ -47,27 +56,41 @@ pub fn valid_md5<T: AsRef<[u8]>>(bytes: T, expected_md5: &str) -> bool {
 ///
 /// # Returns
 /// `Ok(Vec<AppError>)` containing any download failures.
-pub async fn fetch_fastqs(
-    data: &[EnaFileReport],
-    outdir: PathBuf,
-) -> Result<Vec<AppError>, AppError> {
-    let mut failed_samples: Vec<AppError> = Vec::new();
+pub async fn fetch_fastqs(data: &[EnaFileReport], outdir: PathBuf) -> Result<bool, AppError> {
+    let mut all_succeeded = true;
     let bar = progress_bar(data.len() as u64);
 
+    let mut writer = get_writer(&outdir);
+
     for ena_report in data {
-        // We should fix this. Preferably, we want to continue
-        // downloading the remaining files.
         let download_spec: DownloadSpec = match ena_report.get_download_spec(&outdir) {
             Ok(spec) => spec,
             Err(err) => {
-                failed_samples.push(AppError::MetadataDownloadError(err.to_string()));
-                bar.println(format!("{} {}", ena_report.run_accession, err));
+                //
+                let msg = format!(
+                    "{} {} {}",
+                    ena_report.run_accession,
+                    ena_report.instrument_platform.abbreviation(),
+                    err.reason()
+                );
+                bar.println(style(msg).red().to_string());
                 bar.inc(1);
+
+                //
+                all_succeeded = false;
+                writer.write_all(
+                    format!(
+                        "{}\t{}\t{}\n",
+                        ena_report.run_accession,
+                        "invalid ENA report format",
+                        err.reason(),
+                    )
+                    .as_bytes(),
+                )?;
                 continue;
             }
         };
 
-        let mut download_status = DownloadStatus::success();
         let mut total_bytes = 0usize;
 
         for (fq_ftp, fq_md5, fq_local) in download_spec {
@@ -82,20 +105,45 @@ pub async fn fetch_fastqs(
             match download_result {
                 Ok(bytes) => total_bytes += bytes,
                 Err(err) => {
-                    download_status = DownloadStatus::failure(err.reason());
-                    failed_samples.push(err);
+                    all_succeeded = false;
+                    // Progress bar
+                    let msg = format!(
+                        "{} {} {}",
+                        &ena_report.run_accession,
+                        &ena_report.instrument_platform.abbreviation(),
+                        err.reason()
+                    );
+                    bar.println(style(msg).red().to_string());
+
+                    // File
+                    writer.write_all(
+                        format!(
+                            "{}\t{}\t{}\n",
+                            ena_report.run_accession,
+                            "download failed",
+                            err.reason(),
+                        )
+                        .as_bytes(),
+                    )?;
                 }
             };
         }
 
         bar.inc(1);
-        bar.println(download_status.fmt_for_bar(
-            &ena_report.run_accession,
-            &ena_report.instrument_platform,
-            total_bytes,
-        ));
+
+        if total_bytes > 0 {
+            let msg = format!(
+                "{} {} {}",
+                &ena_report.run_accession,
+                &ena_report.instrument_platform.abbreviation(),
+                format_bytes(total_bytes)
+            );
+            bar.println(style(msg).green().to_string());
+        }
     }
 
     bar.finish();
-    Ok(failed_samples)
+    writer.flush()?;
+
+    Ok(all_succeeded)
 }
