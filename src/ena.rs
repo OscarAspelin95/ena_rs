@@ -61,7 +61,7 @@ pub async fn fetch_fastqs(
             Ok(spec) => spec,
             Err(err) => {
                 failed_samples.push(AppError::MetadataDownloadError(err.to_string()));
-                bar.println(format!("{} {}", ena_report.run_accession, err.to_string()));
+                bar.println(format!("{} {}", ena_report.run_accession, err));
                 bar.inc(1);
                 continue;
             }
@@ -82,7 +82,7 @@ pub async fn fetch_fastqs(
             match download_result {
                 Ok(bytes) => total_bytes += bytes,
                 Err(err) => {
-                    download_status = DownloadStatus::failure(&err.reason());
+                    download_status = DownloadStatus::failure(err.reason());
                     failed_samples.push(err);
                 }
             };
