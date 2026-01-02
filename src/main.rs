@@ -17,7 +17,10 @@ async fn main() -> Result<(), AppError> {
     let args = App::parse();
 
     let ena_url = EnaUrl::new().build(&args.accession);
-    create_dir(&args.outdir).await?;
+
+    if !args.outdir.exists() {
+        create_dir(&args.outdir).await?;
+    }
 
     info!("Fetching data from {}", ena_url);
     let data = fetch_metadata(&ena_url).await?;
