@@ -16,33 +16,24 @@ use crate::download::download_single_file_with_retry;
 /// # Returns
 /// Vec of ENA file reports containing download information.
 pub async fn fetch_metadata(url: &str) -> Result<Vec<EnaFileReport>, AppError> {
-    let response = reqwest::get(url).await?;
+    let response = reqwest::get(url).await?.error_for_status()?;
     let bytes = response.bytes().await?;
 
     let data: Vec<EnaFileReport> = serde_json::from_slice(&bytes)?;
 
+    if data.is_empty() {
+        return Err(AppError::MetadataDownloadError(
+            "No records found for the given accession".to_string(),
+        ));
+    }
+
     Ok(data)
 }
 
-/// Validates file contents against expected MD5 checksum.
-///
-/// # Arguments
-/// * `bytes` - File contents to validate
-/// * `expected_md5` - Expected MD5 hash as hex string
-///
-/// # Returns
-/// `true` if MD5 matches, `false` otherwise.
-pub fn valid_md5<T: AsRef<[u8]>>(bytes: T, expected_md5: &str) -> bool {
-    let digest = md5::compute(&bytes);
-    let actual_md5_sum = format!("{:x}", digest);
-
-    actual_md5_sum == expected_md5
-}
-
-fn get_writer(outdir: &Path) -> BufWriter<File> {
+fn get_writer(outdir: &Path) -> Result<BufWriter<File>, AppError> {
     let f = outdir.join("failed_samples.txt");
-    let file = File::create(&f).expect("Failed to create output file for failed samples.");
-    BufWriter::new(file)
+    let file = File::create(&f)?;
+    Ok(BufWriter::new(file))
 }
 
 /// Downloads FASTQ files based on EnaFileReports.
@@ -60,7 +51,7 @@ pub async fn fetch_fastqs(data: &[EnaFileReport], outdir: PathBuf) -> Result<boo
     let mut all_succeeded = true;
     let bar = progress_bar(data.len() as u64);
 
-    let mut writer = get_writer(&outdir);
+    let mut writer = get_writer(&outdir)?;
 
     for ena_report in data {
         let download_spec: DownloadSpec = match ena_report.get_download_spec(&outdir) {
@@ -95,7 +86,10 @@ pub async fn fetch_fastqs(data: &[EnaFileReport], outdir: PathBuf) -> Result<boo
 
         for (fq_ftp, fq_md5, fq_local) in download_spec {
             // Extract filename for progress display
-            let filename = fq_local.rsplit('/').next().unwrap_or(&fq_local);
+            let filename = Path::new(&fq_local)
+                .file_name()
+                .and_then(|n| n.to_str())
+                .unwrap_or(&fq_local);
             bar.set_message(filename.to_string());
 
             let download_result =

@@ -1,12 +1,10 @@
 use indicatif::ProgressBar;
+use tokio::io::AsyncWriteExt;
 
 use crate::AppError;
-use crate::ena::valid_md5;
 use crate::errors::FailedFastq;
 use crate::schemas::report::EnaFileReport;
 use console::style;
-use std::fs::File;
-use std::io::{BufWriter, Write};
 use std::time::Duration;
 
 pub async fn download_single_file_with_retry(
@@ -36,7 +34,7 @@ pub async fn download_single_file_with_retry(
             Ok(download_result) => download_result,
             Err(err) => {
                 // Clean up partial file if it exists
-                let _ = std::fs::remove_file(fq_local);
+                let _ = tokio::fs::remove_file(fq_local).await;
 
                 if num_retries >= max_num_retries {
                     return Err(AppError::TimeoutError(err.to_string()));
@@ -56,7 +54,7 @@ pub async fn download_single_file_with_retry(
             Ok(bytes_written) => return Ok(bytes_written),
             Err(err) => {
                 // Clean up partial file if it exists (MD5 failures already clean up)
-                let _ = std::fs::remove_file(fq_local);
+                let _ = tokio::fs::remove_file(fq_local).await;
 
                 if num_retries >= max_num_retries {
                     return Err(AppError::FastqDownloadError(err));
@@ -98,27 +96,43 @@ pub async fn download_single_file(
 
     let fq_url = format!("https://{}", fq_ftp);
 
-    let response = reqwest::get(&fq_url)
+    let mut response = reqwest::get(&fq_url)
         .await
         .map_err(|e| make_error(e.to_string()))?;
 
-    let bytes = response
-        .bytes()
+    let outfile = tokio::fs::File::create(fq_local)
         .await
         .map_err(|e| make_error(e.to_string()))?;
+    let mut writer = tokio::io::BufWriter::new(outfile);
+    let mut md5_context = md5::Context::new();
+    let mut total_bytes: usize = 0;
 
-    let outfile = File::create(fq_local).map_err(|e| make_error(e.to_string()))?;
-    let mut writer = BufWriter::new(outfile);
+    while let Some(chunk) = response
+        .chunk()
+        .await
+        .map_err(|e| make_error(e.to_string()))?
+    {
+        writer
+            .write_all(&chunk)
+            .await
+            .map_err(|e| make_error(e.to_string()))?;
+        md5_context.consume(&chunk);
+        total_bytes += chunk.len();
+    }
 
     writer
-        .write_all(&bytes)
+        .flush()
+        .await
         .map_err(|e| make_error(e.to_string()))?;
-    writer.flush().map_err(|e| make_error(e.to_string()))?;
 
-    if !valid_md5(&bytes, fq_md5) {
-        let _ = std::fs::remove_file(fq_local);
+    let digest = md5_context.finalize();
+    let actual_md5 = format!("{:x}", digest);
+
+    if actual_md5 != fq_md5 {
+        drop(writer);
+        tokio::fs::remove_file(fq_local).await.ok();
         return Err(make_error("MD5 mismatch".to_string()));
     }
 
-    Ok(bytes.len())
+    Ok(total_bytes)
 }

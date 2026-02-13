@@ -1,19 +1,42 @@
-use clap::Parser;
+use clap::{Parser, Subcommand};
 use std::path::PathBuf;
 
-/// Command-line arguments for the ENA downloader.
+/// Command-line arguments for the ENA tool.
 #[derive(Debug, Parser)]
-#[command(version, about = "CLI tool for downloading ENA fastq files.", long_about = None)]
+#[command(version, about = "CLI tool for working with ENA data.", long_about = None)]
 pub struct App {
-    /// ENA accession number (run, sample, or study accession).
-    #[arg(
-        short,
-        long,
-        help = "ENA accession. Can be run, sample or study accession."
-    )]
-    pub accession: String,
+    #[command(subcommand)]
+    pub command: Commands,
+}
 
-    /// Output directory for downloaded files.
-    #[arg(short, long, help = "Where to output files.")]
-    pub outdir: PathBuf,
+#[derive(Debug, Subcommand)]
+pub enum Commands {
+    /// Download FASTQ files from ENA
+    Download {
+        #[arg(
+            short,
+            long,
+            help = "ENA accession. Can be run, sample or study accession."
+        )]
+        accession: String,
+
+        #[arg(short, long, help = "Where to output files.")]
+        outdir: PathBuf,
+    },
+    /// Summarize ENA metadata without downloading files
+    Summary {
+        #[arg(
+            short,
+            long,
+            help = "ENA accession. Can be run, sample or study accession."
+        )]
+        accession: String,
+
+        #[arg(
+            short,
+            long,
+            help = "Output file path for summary JSON. Defaults to stdout."
+        )]
+        output: Option<PathBuf>,
+    },
 }

@@ -56,6 +56,16 @@ impl Platform {
         }
     }
 
+    /// Returns the ENA-format platform name.
+    pub fn name(&self) -> &str {
+        match self {
+            Platform::Illumina => "ILLUMINA",
+            Platform::IonTorrent => "IONTORRENT",
+            Platform::PacBio => "PACBIO",
+            Platform::Nanopore => "OXFORD_NANOPORE",
+        }
+    }
+
     /// Returns the read type (single-end or paired-end) for this platform.
     pub fn end_kind(&self) -> PairKind {
         match self {

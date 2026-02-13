@@ -7,13 +7,7 @@ pub struct DownloadSpec {
 
 impl DownloadSpec {
     pub fn current_length(&self) -> usize {
-        let length = self.fastq_ftps.len();
-
-        if length == self.fastq_md5s.len() && length == self.fastq_locals.len() {
-            return length;
-        }
-
-        panic!("Unequal number of ftps, md5s and local path.")
+        self.fastq_ftps.len()
     }
 }
 
