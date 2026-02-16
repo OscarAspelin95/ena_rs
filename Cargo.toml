@@ -23,5 +23,5 @@ simple_logger = {version = "5.1.0"}
 url = {version = "2.5.8"}
 md5 = {version = "0.8.0"}
 struct-field-names-as-array = {version = "0.3.0"}
-indicatif = {version = "0.18.3", features = ["tokio"]}
+indicatif = {version = "0.18.4", features = ["tokio"]}
 console = {version = "0.16.2"}
