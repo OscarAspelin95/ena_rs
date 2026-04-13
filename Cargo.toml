@@ -12,7 +12,7 @@ name = "ena_rs"
 path = "src/main.rs"
 
 [dependencies]
-tokio = {version = "1.49.0", features = ["full"]}
+tokio = {version = "1.51.1", features = ["full"]}
 reqwest = {version = "0.12.28", features = ["json"]}
 thiserror = {version = "2.0.17"}
 serde = {version = "1.0.228", features = ["derive"]}
