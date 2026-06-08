@@ -18,7 +18,7 @@ thiserror = {version = "2.0.17"}
 serde = {version = "1.0.228", features = ["derive"]}
 serde_json = {version = "1.0.149"}
 clap = {version = "4.5.53", features = ["derive"]}
-log = {version = "0.4.29", features =  ["serde"]}
+log = {version = "0.4.32", features =  ["serde"]}
 simple_logger = {version = "5.1.0"}
 url = {version = "2.5.8"}
 md5 = {version = "0.8.0"}
