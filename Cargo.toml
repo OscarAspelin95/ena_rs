@@ -16,7 +16,7 @@ tokio = {version = "1.52.3", features = ["full"]}
 reqwest = {version = "0.13.3", features = ["json"]}
 thiserror = {version = "2.0.17"}
 serde = {version = "1.0.228", features = ["derive"]}
-serde_json = {version = "1.0.149"}
+serde_json = {version = "1.0.150"}
 clap = {version = "4.5.53", features = ["derive"]}
 log = {version = "0.4.29", features =  ["serde"]}
 simple_logger = {version = "5.1.0"}
